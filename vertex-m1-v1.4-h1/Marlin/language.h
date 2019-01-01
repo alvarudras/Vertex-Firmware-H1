@@ -225,7 +225,12 @@
         #define MSG_LED_YELLOW "Yellow"		
         #define MSG_LED_WHITE "White"		
         #define MSG_LED_OFF "Off"
-
+	#define MSG_LEVEL_BED "Level bed"
+	#define MSG_LEVEL_BACK_RIGHT "Back right"
+	#define MSG_LEVEL_BACK_LEFT "Back left"
+	#define MSG_LEVEL_FRONT_MIDDLE "Front middle"
+	#define MSG_LEVEL_CENTER "Center"
+	
 // Serial Console Messages
 
 	#define MSG_Enqueing "enqueing \""

@@ -52,6 +52,7 @@ static void lcd_main_menu();
 static void lcd_tune_menu();
 static void lcd_prepare_menu();
 static void lcd_move_menu();
+static void lcd_level_bed();
 static void lcd_load_menu();
 static void lcd_unload_menu();
 static void lcd_control_menu();
@@ -60,6 +61,7 @@ static void lcd_control_temperature_menu();
 static void lcd_control_temperature_preheat_pla_settings_menu();
 static void lcd_control_temperature_preheat_abs_settings_menu();
 static void lcd_control_motion_menu();
+bool return_to_status_enabled = true;
 #ifdef DOGLCD
 static void lcd_set_contrast();
 #endif
@@ -632,6 +634,7 @@ void lcd_cooldown()
 
 static void lcd_prepare_menu()
 {
+	return_to_status_enabled = true;
     START_MENU();
     MENU_ITEM(back, MSG_MAIN, lcd_main_menu);
     MENU_ITEM(gcode, MSG_AUTO_HOME, PSTR("G28"));
@@ -666,11 +669,57 @@ MENU_ITEM(submenu, MSG_MOVE_AXIS, lcd_move_menu);
         MENU_ITEM(gcode, MSG_SWITCH_PS_ON, PSTR("M80"));
     }
 #endif
+	MENU_ITEM(submenu, MSG_LEVEL_BED, lcd_level_bed);
     END_MENU();
 }
 
 float move_menu_scale;
 static void lcd_move_menu_axis();
+
+
+
+static void lcd_level_bed_shared_functionality()
+{
+	#ifdef DELTA
+	calculate_delta(current_position);
+	plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS], manual_feedrate[X_AXIS]/60, active_extruder);
+	#else
+	plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], manual_feedrate[X_AXIS]/60, active_extruder);
+	#endif	
+}
+
+static void lcd_level_bed_center()
+{
+	// 80
+	current_position[X_AXIS] = X_MAX_POS / 2.5f;
+	// 100
+	current_position[Y_AXIS] = Y_MAX_POS / 2.0f;
+	lcd_level_bed_shared_functionality();
+}
+
+
+static void lcd_level_bed_front_middle()
+{
+	// 80
+	current_position[X_AXIS] = X_MAX_POS / 2.5f;
+	// 40
+	current_position[Y_AXIS] = Y_MAX_POS / 5.f;
+	lcd_level_bed_shared_functionality();
+}
+
+static void lcd_level_bed_back_right()
+{
+	current_position[X_AXIS] = X_MAX_POS;
+	current_position[Y_AXIS] = Y_MAX_POS;
+	lcd_level_bed_shared_functionality();
+}
+
+static void lcd_level_bed_back_left()
+{
+	current_position[X_AXIS] = 0;
+	current_position[Y_AXIS] = Y_MAX_POS;
+	lcd_level_bed_shared_functionality();
+}
 
 static void lcd_move_x()
 {
@@ -819,9 +868,28 @@ static void lcd_move_menu_01mm()
     lcd_move_menu_axis();
 }
 
+static void lcd_level_bed()
+{
+	return_to_status_enabled = false;
+	START_MENU();	
+	MENU_ITEM(back, MSG_PREPARE, lcd_prepare_menu);
+	if (! (axis_known_position[X_AXIS] && axis_known_position[Y_AXIS]) )
+	{		
+		MENU_ITEM(back, MSG_POSITION_UNKNOWN, lcd_prepare_menu);
+		SERIAL_ECHO_START;
+		SERIAL_ECHOLNPGM(MSG_POSITION_UNKNOWN);
+	} else {
+		MENU_ITEM(function, MSG_LEVEL_BACK_RIGHT, lcd_level_bed_back_right);
+		MENU_ITEM(function, MSG_LEVEL_BACK_LEFT, lcd_level_bed_back_left);
+		MENU_ITEM(function, MSG_LEVEL_FRONT_MIDDLE, lcd_level_bed_front_middle);
+		MENU_ITEM(function, MSG_LEVEL_CENTER, lcd_level_bed_center);
+	}
+	END_MENU();
+}
+
 static void lcd_move_menu()
 {
-    START_MENU();  
+    START_MENU();
     MENU_ITEM(back, MSG_PREPARE, lcd_prepare_menu);
     MENU_ITEM(submenu, MSG_MOVE_10MM, lcd_move_menu_10mm);
     MENU_ITEM(submenu, MSG_MOVE_1MM, lcd_move_menu_1mm);
@@ -1780,7 +1848,7 @@ void lcd_update()
 #endif
 
 #ifdef ULTIPANEL
-        if(timeoutToStatus < millis() && currentMenu != lcd_status_screen)
+        if(timeoutToStatus < millis() && currentMenu != lcd_status_screen && return_to_status_enabled)
         {
             lcd_return_to_status();
             lcdDrawUpdate = 2;

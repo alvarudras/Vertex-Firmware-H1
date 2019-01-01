@@ -225,6 +225,7 @@
         #define MSG_LED_YELLOW "Yellow"
         #define MSG_LED_WHITE "White"
         #define MSG_LED_OFF "Off"
+	#define MSG_LEVEL_BED "Level bed"
 
 
 // Serial Console Messages
